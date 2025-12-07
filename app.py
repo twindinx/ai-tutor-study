@@ -3,6 +3,7 @@ from groq import Groq
 
 # --- HELPER FUNCTION: STREAM PARSER ---
 def parse_groq_stream(stream):
+    """Parses the stream of objects from Groq API to yield text."""
     for chunk in stream:
         if chunk.choices:
             if chunk.choices[0].delta.content is not None:
@@ -14,27 +15,20 @@ def is_new_topic(client, history, new_prompt):
     Uses a small, fast AI call to decide if the user is changing topics.
     Returns: True (Show Form) or False (Skip Form)
     """
-    # If no history, it's definitely new
     if not history: 
         return True
     
-    # Get the last few messages for context
     context = history[-3:] 
     
     router_prompt = f"""
     Analyze the conversation context and the new user prompt.
-    
     [CONTEXT]: {context}
-    
     [NEW PROMPT]: "{new_prompt}"
     
-    Task: Determine if the [NEW PROMPT] is a continuation/follow-up of the current topic, 
-    or if it initiates a NEW line of inquiry (new topic, new concept, or restart).
+    Task: Determine if the [NEW PROMPT] is a continuation/follow-up (e.g. "Give me an example", "Why?") 
+    or a NEW line of inquiry (e.g. "What is Speciation?", "Define Mutation").
     
-    - "Give me an example", "Explain simpler", "Why?", "What about birds?" (if discussing animals) -> CONTINUATION
-    - "What is Speciation?", "Move on to the next section", "Define Mutation" (if discussing something else) -> NEW TOPIC
-    
-    Respond ONLY with the word "NEW" or "CONTINUATION".
+    Respond ONLY with "NEW" or "CONTINUATION".
     """
     
     try:
@@ -47,7 +41,6 @@ def is_new_topic(client, history, new_prompt):
         decision = completion.choices[0].message.content.strip().upper()
         return "NEW" in decision
     except:
-        # If API fails, default to showing the form to be safe
         return True
 
 # --- PAGE CONFIGURATION ---
@@ -87,7 +80,7 @@ if "pending_question" not in st.session_state:
     st.session_state.pending_question = ""
 
 # --- CHAT UI ---
-st.title("🧬 Study Partner")
+st.title("🧬 Evolution Study Partner")
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -129,7 +122,6 @@ if st.session_state.planning_active:
                 
                 if api_key:
                     client = Groq(api_key=api_key)
-                    # Add instruction to history momentarily for the call
                     msgs = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
                     msgs.append({"role": "user", "content": sys_instruction})
                     
@@ -137,6 +129,7 @@ if st.session_state.planning_active:
                         stream = client.chat.completions.create(
                             model="llama-3.3-70b-versatile", messages=msgs, stream=True
                         )
+                        # --- FIX 1: WRAP STREAM HERE ---
                         response = st.write_stream(parse_groq_stream(stream))
                         st.session_state.messages.append({"role": "assistant", "content": response})
                         st.session_state.planning_active = False
@@ -148,17 +141,13 @@ if st.session_state.planning_active:
 # --- INPUT HANDLER ---
 if not st.session_state.planning_active:
     if prompt := st.chat_input("Type your question here..."):
-        # 1. Add user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # 2. Logic based on Condition
         if condition == "Planning-Intervention GenAI":
             if api_key:
                 client = Groq(api_key=api_key)
-                # SMART ROUTER CHECK
-                # We check if we should interrupt or just answer
                 should_plan = is_new_topic(client, st.session_state.messages[:-1], prompt)
                 
                 if should_plan:
@@ -166,25 +155,31 @@ if not st.session_state.planning_active:
                     st.session_state.planning_active = True
                     st.rerun()
                 else:
-                    # It's a follow-up, just answer normally
                     stream = client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
                         messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
                         stream=True
                     )
+                    # --- FIX 2: WRAP STREAM HERE ---
                     response = st.write_stream(parse_groq_stream(stream))
                     st.session_state.messages.append({"role": "assistant", "content": response})
             else:
                 st.error("Add API Key")
         
         else:
-            # Standard Mode (Direct)
+            # Standard Mode
             if api_key:
                 client = Groq(api_key=api_key)
-                stream = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
-                    stream=True
-                )
-                response = st.write_stream(parse_groq_stream(stream))
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                try:
+                    stream = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
+                        stream=True
+                    )
+                    # --- FIX 3: WRAP STREAM HERE ---
+                    response = st.write_stream(parse_groq_stream(stream))
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            else:
+                st.error("Please enter API Key in sidebar.")
