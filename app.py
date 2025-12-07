@@ -2,7 +2,7 @@ import streamlit as st
 from groq import Groq
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="AI Study Partner", page_icon="🧬", layout="centered")
+st.set_page_config(page_title="AI Study Partner", page_icon="🌝", layout="centered")
 
 # --- CSS FOR CLEAN UI (Corrected) ---
 st.markdown("""
@@ -101,7 +101,7 @@ if "pending_question" not in st.session_state:
     st.session_state.pending_question = ""
 
 # --- CHAT UI ---
-st.title("🧬 Evolution Study Partner")
+st.title("🌝 AI Study Partner")
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -114,18 +114,18 @@ if st.session_state.planning_active:
         st.info("To give you the best explanation, let's clarify your learning goal.")
         
         with st.form("planning_form"):
-            st.markdown("#### 1. Focus Area (Scope)")
+            st.markdown("#### 1. Focus Area : What specific part of this topic do you want to cover?")
             scope_selection = []
-            if st.checkbox("Core Definitions"): scope_selection.append("Core Definitions")
+            if st.checkbox("Core Definitions "): scope_selection.append("Core Definitions")
             if st.checkbox("The Step-by-Step Process"): scope_selection.append("Step-by-Step Process")
             if st.checkbox("A Concrete Example"): scope_selection.append("Concrete Example")
             if st.checkbox("Common Misconceptions"): scope_selection.append("Common Misconceptions")
-            other_text = st.text_input("Other:", placeholder="Type here...", label_visibility="collapsed")
+            other_text = st.text_input("Other:", placeholder="Other? Please type here...", label_visibility="collapsed")
             if other_text: scope_selection.append(f"Other: {other_text}")
 
             st.markdown("---")
-            st.markdown("#### 2. Learning Goal (Depth)")
-            depth = st.radio("Select one:", ["Quick Summary", "Detailed Explanation", "Application Practice"], label_visibility="collapsed")
+            st.markdown("#### 2. Leaning Goal: How do you need to use this information?")
+            depth = st.radio("Select one:", ["Quick Summary (I just need the big picture or a refresher)", "Detailed Explanation (I need to understand the \"why\" and \"how\" deeply)", "Application Practice (Give me a new scenario to solve to test my understanding)"], label_visibility="collapsed")
             
             st.markdown("---")
             st.markdown("#### 3. Prior Knowledge")
