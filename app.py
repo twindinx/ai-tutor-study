@@ -3,12 +3,13 @@ from groq import Groq
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="AI Study Partner", page_icon="🧬", layout="centered")
+
+# --- CSS FOR CLEAN UI (Corrected) ---
 st.markdown("""
     <style>
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         .stDeployButton {display:none;}
-        div[data-testid="stForm"] {border: 2px solid #4CAF50; border-radius: 10px; padding: 20px; background-color: #f9f9f9;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -29,7 +30,6 @@ def get_ai_response(client, messages):
             messages=messages,
             stream=True
         )
-        # This is the critical fix applied centrally:
         return st.write_stream(parse_groq_stream(stream))
     except Exception as e:
         st.error(f"API Error: {e}")
@@ -58,7 +58,6 @@ def is_new_topic(client, history, new_prompt):
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("🔐 Researcher Controls")
-    # API Key Loading
     if "GROQ_API_KEY" in st.secrets:
         api_key = st.secrets["GROQ_API_KEY"]
         st.success("Key Loaded")
@@ -115,7 +114,6 @@ if st.session_state.planning_active:
             submitted = st.form_submit_button("Generate Response", use_container_width=True)
             
             if submitted:
-                # Build System Prompt for Planning
                 scope_str = ", ".join(scope_selection) if scope_selection else "General Overview"
                 sys_instruction = (
                     f"User Question: '{st.session_state.pending_question}'. "
@@ -125,11 +123,9 @@ if st.session_state.planning_active:
                 
                 if api_key:
                     client = Groq(api_key=api_key)
-                    # Prepare messages
                     msgs = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
                     msgs.append({"role": "user", "content": sys_instruction})
                     
-                    # CALL CENTRALIZED FUNCTION
                     with st.chat_message("assistant"):
                         response = get_ai_response(client, msgs)
                     
@@ -144,30 +140,25 @@ if st.session_state.planning_active:
 # --- MAIN INPUT HANDLER ---
 if not st.session_state.planning_active:
     if prompt := st.chat_input("Type your question here..."):
-        # 1. Add and display user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # 2. Logic based on Condition
         if api_key:
             client = Groq(api_key=api_key)
             
             if condition == "Planning-Intervention GenAI":
-                # Check for new topic
                 if is_new_topic(client, st.session_state.messages[:-1], prompt):
                     st.session_state.pending_question = prompt
                     st.session_state.planning_active = True
                     st.rerun()
                 else:
-                    # Follow-up (Direct Answer)
                     with st.chat_message("assistant"):
                         response = get_ai_response(client, st.session_state.messages)
                     if response:
                         st.session_state.messages.append({"role": "assistant", "content": response})
 
             else:
-                # Standard Mode (Always Direct Answer)
                 with st.chat_message("assistant"):
                     response = get_ai_response(client, st.session_state.messages)
                 if response:
