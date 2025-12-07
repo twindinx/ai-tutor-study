@@ -95,7 +95,7 @@ if st.session_state.planning_active:
                         messages_payload.append({"role": "user", "content": sys_instruction})
 
                         stream = client.chat.completions.create(
-                            model="llama3-70b-8192",
+                            model="llama-3.3-70b-versatile",
                             messages=messages_payload,
                             stream=True
                         )
@@ -130,7 +130,7 @@ if not st.session_state.planning_active:
                 client = Groq(api_key=api_key)
                 try:
                     stream = client.chat.completions.create(
-                        model="llama3-70b-8192",
+                        model="llama-3.3-70b-versatile",
                         messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
                         stream=True
                     )
