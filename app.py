@@ -39,19 +39,39 @@ def get_ai_response(client, messages):
 def is_new_topic(client, history, new_prompt):
     """Decides if the user is switching topics."""
     if not history: return True
-    context = history[-3:] 
+    
+    # Get just the last user message and last assistant message for context
+    context = history[-2:] if len(history) >= 2 else history
+    
     router_prompt = f"""
-    Analyze conversation. Context: {context}. New Prompt: "{new_prompt}".
-    Is this a CONTINUATION/FOLLOW-UP (e.g. "Why?", "Example?") or a NEW topic?
-    Respond ONLY with "NEW" or "CONTINUATION".
+    Analyze the conversation context and the new user prompt.
+    
+    [CONTEXT]: {context}
+    
+    [NEW PROMPT]: "{new_prompt}"
+    
+    Task: Classify the [NEW PROMPT] as "NEW" or "CONTINUATION".
+    
+    STRICT RULES:
+    1. "CONTINUATION": The user is asking for more detail on the *exact same* specific noun/subject discussed in the last sentence (e.g., "Give me an example of that", "Why does it happen?", "Explain simpler").
+    2. "NEW": The user is asking about a specific concept, definition, or term (e.g., "What is Genetic Variation?", "Define Mutation", "How does Speciation work?").
+    
+    CRITICAL: If the user asks "What is [Concept]?" or "Define [Concept]", it is ALWAYS "NEW", even if that concept was mentioned previously.
+    
+    Respond ONLY with the word "NEW" or "CONTINUATION".
     """
+    
     try:
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": router_prompt}],
-            temperature=0, max_tokens=10
+            temperature=0, 
+            max_tokens=5
         )
-        return "NEW" in completion.choices[0].message.content.strip().upper()
+        decision = completion.choices[0].message.content.strip().upper()
+        # Debugging: Uncomment the next line to see what the router thinks in your terminal
+        # print(f"Router Decision: {decision} for prompt: {new_prompt}")
+        return "NEW" in decision
     except:
         return True
 
