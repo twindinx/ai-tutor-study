@@ -78,13 +78,35 @@ def is_new_topic(client, history, new_prompt):
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("🔐 Researcher Controls")
+    
+    # 1. API Key Loading
     if "GROQ_API_KEY" in st.secrets:
         api_key = st.secrets["GROQ_API_KEY"]
         st.success("Key Loaded")
     else:
         api_key = st.text_input("Enter Groq API Key:", type="password")
 
-    condition = st.radio("Condition:", ["Standard GenAI", "Planning-Intervention GenAI"])
+    # 2. INTELLIGENT CONDITION SETTING (The Fix)
+    # Check the URL for ?mode=planning or ?mode=standard
+    query_params = st.query_params
+    default_index = 0  # Default to Standard
+    
+    if "mode" in query_params:
+        if query_params["mode"] == "planning":
+            default_index = 1
+    
+    # Create the radio button with the correct default
+    condition = st.radio(
+        "Condition:", 
+        ["Standard GenAI", "Planning-Intervention GenAI"],
+        index=default_index
+    )
+    
+    # Force the URL to update if you manually change the radio button
+    if condition == "Planning-Intervention GenAI":
+        st.query_params["mode"] = "planning"
+    else:
+        st.query_params["mode"] = "standard"
     
     if st.button("Reset Chat"):
         st.session_state.messages = [{"role": "assistant", "content": "Hi! I'm your AI Study Partner. Ask me anything about the reading."}]
